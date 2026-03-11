@@ -8,15 +8,15 @@ export function Card({ children, style = {} }) {
   return <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18, ...style }}>{children}</div>
 }
 
-export function CardTitle({ children, color = C.sub }) {
-  return <div style={{ fontSize: 12, fontWeight: 700, color, marginBottom: 14, textTransform: 'uppercase', letterSpacing: 1 }}>{children}</div>
+export function CardTitle({ children, color = C.sub, style = {} }) {
+  return <div style={{ fontSize: 12, fontWeight: 700, color, marginBottom: 14, textTransform: 'uppercase', letterSpacing: 1, ...style }}>{children}</div>
 }
 
 export function KPICard({ icon, label, value, sub, color = C.purple, style = {} }) {
   return (
-    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 16, borderLeft: `3px solid ${color}`, ...style }}>
-      <div style={{ fontSize: 11, color: C.muted, marginBottom: 6 }}>{icon} {label}</div>
-      <div style={{ fontSize: 22, fontWeight: 800, color, lineHeight: 1.2 }}>{value}</div>
+    <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 14, padding: 14, borderLeft: `3px solid ${color}`, ...style }}>
+      <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>{icon} {label}</div>
+      <div style={{ fontSize: 20, fontWeight: 800, color, lineHeight: 1.2 }}>{value}</div>
       {sub && <div style={{ fontSize: 10, color: '#334155', marginTop: 4 }}>{sub}</div>}
     </div>
   )
@@ -25,23 +25,18 @@ export function KPICard({ icon, label, value, sub, color = C.purple, style = {} 
 export function Btn({ children, onClick, color = C.purple, disabled = false, small = false, style = {} }) {
   return (
     <button onClick={onClick} disabled={disabled}
-      style={{ background: disabled ? '#1e293b' : color, border: 'none', borderRadius: 9, color: disabled ? C.muted : '#fff', padding: small ? '7px 12px' : '10px 16px', fontSize: small ? 12 : 13, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 5, transition: 'opacity 0.15s', opacity: disabled ? 0.5 : 1, ...style }}>
+      style={{ background: disabled ? '#1e293b' : color, border: 'none', borderRadius: 9, color: disabled ? C.muted : '#fff', padding: small ? '7px 12px' : '10px 16px', fontSize: small ? 12 : 13, fontWeight: 700, cursor: disabled ? 'not-allowed' : 'pointer', fontFamily: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 5, opacity: disabled ? 0.5 : 1, ...style }}>
       {children}
     </button>
   )
 }
 
 export function Badge({ text, color = C.purple }) {
-  const bg = color + '22'
-  return <span style={{ background: bg, color, border: `1px solid ${color}44`, borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{text}</span>
+  return <span style={{ background: color + '22', color, border: `1px solid ${color}44`, borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>{text}</span>
 }
 
 export function StatusBadge({ status }) {
-  const map = {
-    pending: [C.amber, 'ລໍຖ້າ'], paid: [C.green, 'ຊຳລະແລ້ວ'],
-    shipped: [C.purple, 'ສົ່ງແລ້ວ'], cancelled: [C.red, 'ຍົກເລີກ'],
-    packed: [C.blue, 'ແພັກແລ້ວ'],
-  }
+  const map = { pending: [C.amber, 'ລໍຖ້າ'], paid: [C.green, 'ຊຳລະແລ້ວ'], shipped: [C.purple, 'ສົ່ງແລ້ວ'], cancelled: [C.red, 'ຍົກເລີກ'], packed: [C.blue, 'ແພັກແລ້ວ'] }
   const [color, label] = map[status] || [C.muted, status]
   return <Badge text={label} color={color} />
 }
@@ -68,28 +63,24 @@ export function Select({ label, value, onChange, options }) {
   )
 }
 
-export function Table({ headers, rows, widths }) {
+export function Table({ headers, rows }) {
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
         <thead>
           <tr style={{ background: '#0a0f1e' }}>
-            {headers.map((h, i) => (
-              <th key={i} style={{ padding: '9px 12px', textAlign: 'left', color: C.muted, fontWeight: 700, whiteSpace: 'nowrap', width: widths?.[i] }}>{h}</th>
-            ))}
+            {headers.map((h, i) => <th key={i} style={{ padding: '9px 12px', textAlign: 'left', color: C.muted, fontWeight: 700, whiteSpace: 'nowrap' }}>{h}</th>)}
           </tr>
         </thead>
         <tbody>
           {rows.map((row, i) => (
             <tr key={i} style={{ borderTop: `1px solid ${C.border}` }}>
-              {row.map((cell, j) => (
-                <td key={j} style={{ padding: '10px 12px', color: C.sub, verticalAlign: 'middle' }}>{cell}</td>
-              ))}
+              {row.map((cell, j) => <td key={j} style={{ padding: '10px 12px', color: C.sub, verticalAlign: 'middle' }}>{cell}</td>)}
             </tr>
           ))}
         </tbody>
       </table>
-      {rows.length === 0 && <div style={{ textAlign: 'center', padding: 32, color: '#334155' }}>ບໍ່ມີຂໍ້ມູນ</div>}
+      {rows.length === 0 && <div style={{ textAlign: 'center', padding: 28, color: '#334155' }}>ບໍ່ມີຂໍ້ມູນ</div>}
     </div>
   )
 }
@@ -100,7 +91,7 @@ export function MiniBar({ data, color = C.purple }) {
     <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 64 }}>
       {data.map((d, i) => (
         <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-          <div style={{ width: '100%', background: color, borderRadius: '3px 3px 0 0', height: `${(d.v / max) * 52}px`, minHeight: 3, transition: 'height 0.5s', opacity: 0.85 }} />
+          <div style={{ width: '100%', background: color, borderRadius: '3px 3px 0 0', height: `${(d.v / max) * 52}px`, minHeight: d.v > 0 ? 3 : 0, opacity: 0.85 }} />
           <span style={{ fontSize: 9, color: C.muted }}>{d.l}</span>
         </div>
       ))}
