@@ -1,167 +1,148 @@
-import { useState } from 'react'
-import { Card, CardTitle, KPICard, Btn, MiniBar, C } from './UI.jsx'
-import { fmtTHB, fmtDate, TOTAL_DEBT, TAX_RATE, DEBT_RATE } from '../store.js'
+import { useReducer, useState, useCallback } from 'react'
+import Login from './Login.jsx'
+import AdminModule from './AdminModule.jsx'
+import PackerModule from './PackerModule.jsx'
+import FinanceModule from './FinanceModule.jsx'
+import OwnerModule from './OwnerModule.jsx'
+import { Notify, C } from './UI.jsx'
+import { INITIAL_PRODUCTS, INITIAL_PRICE_RATES, INITIAL_EXPENSES, ROLES, genId } from './store.js'
 
-export default function OwnerModule({ state, dispatch, user, notify }) {
-  const { orders, products, expenses, auditLog, rates } = state
-  const [showRateEdit, setShowRateEdit] = useState(false)
-  const [kip, setKip] = useState(rates.thbToKip)
-
-  const paidOrders = orders.filter(o => o.status === 'paid')
-  const totalRev = paidOrders.reduce((s, o) => s + o.total, 0)
-  const totalDebtPaid = totalRev * DEBT_RATE
-  const totalTax = totalRev * TAX_RATE
-  const totalExp = expenses.reduce((s, e) => s + (e.currency === 'KIP' ? e.amount / rates.thbToKip : e.amount), 0)
-  const netProfit = totalRev - totalTax - totalDebtPaid - totalExp
-  const debtRemaining = Math.max(0, TOTAL_DEBT - totalDebtPaid)
-  const debtProgress = Math.min(100, (totalDebtPaid / TOTAL_DEBT) * 100)
-
-  // Agent ranking
-  const agentMap = {}
-  orders.filter(o => o.customer_type !== 'ລູກຄ້າປີກ').forEach(o => {
-    agentMap[o.customerName] = (agentMap[o.customerName] || 0) + o.total
+function reducer(state, action) {
+  const log = (action, user, detail) => ({
+    id: genId(), time: new Date().toLocaleString('lo-LA'), action, user, detail
   })
-  const topAgents = Object.entries(agentMap).sort((a, b) => b[1] - a[1]).slice(0, 5)
+  switch (action.type) {
+    case 'ADD_ORDER':
+      return {
+        ...state,
+        orders: [action.order, ...state.orders],
+        auditLog: [log('ສ້າງ Order', action.order.created_by, `${action.order.customerName} ฿${action.order.total}`), ...state.auditLog].slice(0, 100)
+      }
+    case 'PACK_ORDER':
+      return {
+        ...state,
+        orders: state.orders.map(o => o.id === action.id ? { ...o, pack_status: 'packed', packed_by: action.user, packed_at: new Date().toISOString() } : o),
+        products: state.products.map(p => p.id === action.productId ? { ...p, stock: Math.max(0, p.stock - action.qty) } : p),
+        auditLog: [log('ແພັກ Order', action.user, `Order ID: ${action.id}`), ...state.auditLog].slice(0, 100)
+      }
+    case 'SHIP_ORDER':
+      return {
+        ...state,
+        orders: state.orders.map(o => o.id === action.id ? { ...o, pack_status: 'shipped', status: 'shipped', tracking_number: action.tracking, shipped_at: new Date().toISOString() } : o),
+        auditLog: [log('ສົ່ງ Order', action.user, `Tracking: ${action.tracking}`), ...state.auditLog].slice(0, 100)
+      }
+    case 'VERIFY_PAYMENT':
+      return {
+        ...state,
+        orders: state.orders.map(o => o.id === action.id ? { ...o, status: 'paid', verified_by: action.user, verified_at: new Date().toISOString() } : o),
+        auditLog: [log('ຢືນຢັນຊຳລະ', action.user, `Order ID: ${action.id}`), ...state.auditLog].slice(0, 100)
+      }
+    case 'ADD_EXPENSE':
+      return {
+        ...state,
+        expenses: [...state.expenses, action.expense],
+        auditLog: [log('ເພີ່ມລາຍຈ່າຍ', 'Accountant', action.expense.description), ...state.auditLog].slice(0, 100)
+      }
+    case 'APPROVE_EXPENSE':
+      return {
+        ...state,
+        expenses: state.expenses.map(e => e.id === action.id ? { ...e, approved: true } : e),
+        auditLog: [log('ອະນຸມັດລາຍຈ່າຍ', action.user, `ID: ${action.id}`), ...state.auditLog].slice(0, 100)
+      }
+    case 'SET_RATE':
+      return { ...state, rates: { ...state.rates, thbToKip: action.thbToKip } }
+    default:
+      return state
+  }
+}
 
-  // Monthly chart data (mock + real)
-  const months = ['ມ.ກ', 'ກ.ພ', 'ມີ.ນ', 'ເມ', 'ພ.ພ', 'ມິ.ຖ']
-  const mockData = [42000, 38000, 55000, 61000, 48000, totalRev || 0]
-  const chartData = months.map((l, i) => ({ l, v: mockData[i] }))
+const INITIAL_STATE = {
+  orders: [],
+  products: INITIAL_PRODUCTS,
+  priceRates: INITIAL_PRICE_RATES,
+  expenses: INITIAL_EXPENSES,
+  auditLog: [],
+  rates: { thbToKip: 1320 },
+}
 
-  // Order status summary
-  const statusCount = { pending: 0, packed: 0, shipped: 0, paid: 0 }
-  orders.forEach(o => { statusCount[o.status] = (statusCount[o.status] || 0) + 1 })
+const TABS = {
+  [ROLES.ADMIN]:      [{ id: 'admin', label: 'ສ້າງອໍເດີ', icon: '📋', color: C.purple }],
+  [ROLES.PACKER]:     [{ id: 'packer', label: 'ແພັກເຄື່ອງ', icon: '📦', color: C.green }],
+  [ROLES.ACCOUNTANT]: [{ id: 'finance', label: 'ບັນຊີ', icon: '💼', color: C.amber }],
+  [ROLES.OWNER]: [
+    { id: 'owner', label: 'Dashboard', icon: '👑', color: C.red },
+    { id: 'admin', label: 'ອໍເດີ', icon: '📋', color: C.purple },
+    { id: 'packer', label: 'ສົ່ງເຄື່ອງ', icon: '📦', color: C.green },
+    { id: 'finance', label: 'ບັນຊີ', icon: '💼', color: C.amber },
+  ],
+}
 
-  const approveExpense = (id) => {
-    dispatch({ type: 'APPROVE_EXPENSE', id, user: user.name })
-    notify('ອະນຸມັດລາຍຈ່າຍສຳເລັດ ✅')
+export default function App() {
+  const [user, setUser] = useState(null)
+  const [activeTab, setActiveTab] = useState(null)
+  const [state, dispatch] = useReducer(reducer, INITIAL_STATE)
+  const [notif, setNotif] = useState(null)
+
+  const notify = useCallback((msg, type = 'success') => {
+    setNotif({ msg, type })
+    setTimeout(() => setNotif(null), 3000)
+  }, [])
+
+  const handleLogin = (u) => {
+    setUser(u)
+    setActiveTab(TABS[u.role][0].id)
   }
 
-  const exportAll = () => {
-    const rows = orders.map(o => `${o.id},${o.customerName},${o.address},${o.quantity},${o.total},${o.customer_type},${o.status},${fmtDate(o.created_at)}`)
-    const blob = new Blob(['\uFEFF' + ['ID,ຊື່,ທີ່ຢູ່,ຈຳນວນ,ຍອດ,ປະເພດ,ສະຖານະ,ວັນທີ', ...rows].join('\n')], { type: 'text/csv;charset=utf-8' })
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `oumiband-fullreport-${Date.now()}.csv`; a.click()
-  }
+  const handleLogout = () => { setUser(null); setActiveTab(null) }
 
-  const saveRate = () => {
-    dispatch({ type: 'SET_RATE', thbToKip: +kip })
-    setShowRateEdit(false)
-    notify(`ອັດຕາແລກປ່ຽນ: 1 ບາດ = ${kip} ກີບ ✅`)
-  }
+  if (!user) return <Login onLogin={handleLogin} />
 
-  const pendingExpenses = expenses.filter(e => !e.approved)
+  const tabs = TABS[user.role]
+  const roleColors = { admin: C.purple, packer: C.green, accountant: C.amber, owner: C.red }
+  const roleColor = roleColors[user.role]
+  const moduleProps = { state, dispatch, user, notify }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-        <h2 style={{ color: C.red, fontSize: 18, fontWeight: 800 }}>👑 Dashboard ເຈົ້າຂອງ</h2>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Btn onClick={() => setShowRateEdit(true)} color={C.card2} small style={{ border: `1px solid ${C.border}`, color: C.sub }}>💱 ອັດຕາ</Btn>
-          <Btn onClick={exportAll} color={C.card2} small style={{ border: `1px solid ${C.border}`, color: C.sub }}>⬇ Export ທັງໝົດ</Btn>
-        </div>
-      </div>
-
-      {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
-        <KPICard icon="📈" label="ຍອດຂາຍ" value={fmtTHB(totalRev)} sub={`${(totalRev * rates.thbToKip).toLocaleString()} ກີບ`} color={C.green} />
-        <KPICard icon="💰" label="ກຳໄລສຸດທິ" value={fmtTHB(netProfit)} sub={netProfit >= 0 ? '✅ ກຳໄລ' : '⚠ ຂາດທຶນ'} color={netProfit >= 0 ? C.purple : C.red} />
-        <KPICard icon="🧾" label="ພາສີ 7%" value={fmtTHB(totalTax)} sub="ຊຳລະໃຫ້ລັດ" color={C.amber} />
-        <KPICard icon="📦" label="ອໍເດີທັງໝົດ" value={orders.length} sub={`${paidOrders.length} ຊຳລະແລ້ວ`} color={C.blue} />
-      </div>
-
-      {/* Revenue Chart + Order Status */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Card>
-          <CardTitle>📊 ລາຍຮັບ 6 ເດືອນ (ບາດ)</CardTitle>
-          <MiniBar data={chartData} color={C.purple} />
-        </Card>
-        <Card>
-          <CardTitle>📋 ສະຖານະ Order</CardTitle>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            {[['ລໍຖ້າ', statusCount.pending, C.amber], ['ສົ່ງແລ້ວ', statusCount.shipped, C.blue], ['ຊຳລະແລ້ວ', statusCount.paid, C.green], ['ທັງໝົດ', orders.length, C.purple]].map(([l, v, c]) => (
-              <div key={l} style={{ background: '#0a0f1e', borderRadius: 8, padding: '10px 12px', textAlign: 'center' }}>
-                <div style={{ fontSize: 22, fontWeight: 800, color: c }}>{v}</div>
-                <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{l}</div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      {/* Debt Tracker */}
-      <Card>
-        <CardTitle color={C.red}>🏦 ສະຖານະໜີ້ 4,000,000 ບາດ</CardTitle>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: C.muted, marginBottom: 8, flexWrap: 'wrap', gap: 6 }}>
-          <span>ຊຳລະໄປ: <span style={{ color: C.green, fontWeight: 700 }}>{fmtTHB(totalDebtPaid)}</span></span>
-          <span>ເຫຼືອ: <span style={{ color: C.red, fontWeight: 700 }}>{fmtTHB(debtRemaining)}</span></span>
-        </div>
-        <div style={{ background: '#0a0f1e', borderRadius: 100, height: 16, overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${debtProgress}%`, background: `linear-gradient(90deg, ${C.green}, ${C.purple})`, borderRadius: 100, transition: 'width 0.6s', minWidth: debtProgress > 0 ? 8 : 0 }} />
-        </div>
-        <div style={{ textAlign: 'center', fontSize: 11, color: C.muted, marginTop: 6 }}>{debtProgress.toFixed(2)}% ຊຳລະໄປແລ້ວ</div>
-      </Card>
-
-      {/* Top Agents */}
-      <Card>
-        <CardTitle>🏆 ຕົວແທນຂາຍດີ (Leaderboard)</CardTitle>
-        {topAgents.length === 0 ? <div style={{ textAlign: 'center', color: '#334155', padding: 20 }}>ຍັງບໍ່ມີຂໍ້ມູນຕົວແທນ</div> : topAgents.map(([name, total], i) => (
-          <div key={name} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: '#0a0f1e', borderRadius: 10, marginBottom: 8 }}>
-            <span style={{ fontSize: 20, width: 28, textAlign: 'center' }}>{['🥇', '🥈', '🥉', '4️⃣', '5️⃣'][i]}</span>
-            <span style={{ flex: 1, color: C.text, fontWeight: 600 }}>{name}</span>
-            <span style={{ color: C.green, fontWeight: 800 }}>{fmtTHB(total)}</span>
-          </div>
-        ))}
-      </Card>
-
-      {/* Pending Approvals */}
-      {pendingExpenses.length > 0 && (
-        <Card>
-          <CardTitle color={C.amber}>⏳ ລາຍຈ່າຍລໍການອະນຸມັດ ({pendingExpenses.length})</CardTitle>
-          {pendingExpenses.map(e => (
-            <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0a0f1e', borderRadius: 10, padding: '10px 14px', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+    <div style={{ minHeight: '100vh', background: C.bg, color: C.text, fontFamily: "'Noto Sans Lao', sans-serif" }}>
+      <Notify {...(notif || {})} />
+      <div style={{ background: 'rgba(17,24,39,0.98)', borderBottom: `1px solid ${C.border}`, position: 'sticky', top: 0, zIndex: 100 }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 22 }}>🎗️</span>
               <div>
-                <div style={{ color: C.text, fontWeight: 600 }}>{e.description}</div>
-                <div style={{ fontSize: 11, color: C.muted }}>{e.category} · {e.expense_date}</div>
-              </div>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span style={{ color: C.red, fontWeight: 700 }}>{e.currency === 'KIP' ? `${e.amount.toLocaleString()} ກີບ` : fmtTHB(e.amount)}</span>
-                <Btn small onClick={() => approveExpense(e.id)} color={C.green}>✓ ອະນຸມັດ</Btn>
+                <div style={{ fontWeight: 800, fontSize: 15, color: C.text, lineHeight: 1 }}>OuMi Band</div>
+                <div style={{ fontSize: 9, color: C.muted }}>ລະບົບຈັດການທຸລະກິດ</div>
               </div>
             </div>
-          ))}
-        </Card>
-      )}
-
-      {/* Audit Log */}
-      <Card>
-        <CardTitle>🔍 Audit Log ({auditLog.length})</CardTitle>
-        <div style={{ maxHeight: 280, overflowY: 'auto' }}>
-          {auditLog.length === 0 && <div style={{ textAlign: 'center', color: '#334155', padding: 16 }}>ຍັງບໍ່ມີ</div>}
-          {auditLog.map(log => (
-            <div key={log.id} style={{ display: 'flex', gap: 10, padding: '7px 0', borderBottom: `1px solid ${C.border}`, fontSize: 11, alignItems: 'flex-start' }}>
-              <span style={{ color: C.muted, whiteSpace: 'nowrap', minWidth: 90 }}>{log.time}</span>
-              <span style={{ background: '#1e293b', color: C.sub, padding: '1px 7px', borderRadius: 5, whiteSpace: 'nowrap' }}>{log.user}</span>
-              <span style={{ color: C.sub }}>{log.action}: <span style={{ color: '#475569' }}>{log.detail}</span></span>
+            <div style={{ display: 'flex', gap: 2 }}>
+              {tabs.map(t => (
+                <button key={t.id} onClick={() => setActiveTab(t.id)}
+                  style={{ background: activeTab === t.id ? t.color + '15' : 'transparent', border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: 8, fontFamily: 'inherit', fontSize: 12, fontWeight: activeTab === t.id ? 700 : 400, color: activeTab === t.id ? t.color : C.muted, transition: 'all 0.15s', whiteSpace: 'nowrap' }}>
+                  {t.icon} {t.label}
+                </button>
+              ))}
             </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Rate Modal */}
-      {showRateEdit && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-          <div style={{ background: '#1e293b', border: `1px solid ${C.border}`, borderRadius: 16, padding: 24, width: '100%', maxWidth: 360 }}>
-            <h3 style={{ color: C.text, marginBottom: 20 }}>💱 ຕັ້ງຄ່າອັດຕາແລກປ່ຽນ</h3>
-            <div style={{ color: C.muted, fontSize: 13, marginBottom: 12 }}>1 ບາດ (THB) = ? ກີບ (LAK)</div>
-            <input type="number" value={kip} onChange={e => setKip(e.target.value)}
-              style={{ background: '#0a0f1e', border: `1px solid ${C.border}`, borderRadius: 9, color: C.text, padding: '12px 14px', fontSize: 16, outline: 'none', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' }} />
-            <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-              <Btn onClick={() => setShowRateEdit(false)} color={C.card2} style={{ border: `1px solid ${C.border}`, color: C.sub, flex: 1, justifyContent: 'center' }}>ຍົກເລີກ</Btn>
-              <Btn onClick={saveRate} color={C.purple} style={{ flex: 1, justifyContent: 'center' }}>ບັນທຶກ</Btn>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 32, height: 32, background: roleColor + '22', border: `1px solid ${roleColor}44`, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>
+                {user.role === 'owner' ? '👑' : user.role === 'admin' ? '📋' : user.role === 'packer' ? '📦' : '💼'}
+              </div>
+              <button onClick={handleLogout} style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 7, color: C.muted, padding: '5px 10px', fontSize: 11, cursor: 'pointer', fontFamily: 'inherit' }}>ອອກ</button>
             </div>
           </div>
         </div>
-      )}
+      </div>
+      <div style={{ background: roleColor + '0d', borderBottom: `1px solid ${roleColor}22`, padding: '6px 16px' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', fontSize: 12, color: roleColor }}>
+          ສະບາຍດີ, <strong>{user.name}</strong> · ສິດ: {user.role.toUpperCase()}
+        </div>
+      </div>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '16px 16px 40px' }}>
+        {activeTab === 'admin' && <AdminModule {...moduleProps} />}
+        {activeTab === 'packer' && <PackerModule {...moduleProps} />}
+        {activeTab === 'finance' && <FinanceModule {...moduleProps} />}
+        {activeTab === 'owner' && <OwnerModule {...moduleProps} />}
+      </div>
     </div>
   )
 }

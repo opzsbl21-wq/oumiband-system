@@ -1,89 +1,146 @@
 import { useState } from 'react'
-import { USERS } from '../store.js'
+import { Card, CardTitle, Btn, Input, Badge, C } from './UI.jsx'
+import { fmtTHB, fmtDate } from './store.js'
 
-export default function Login({ onLogin }) {
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+export default function PackerModule({ state, dispatch, user, notify }) {
+  const { orders, products } = state
+  const [tracking, setTracking] = useState({})
+  const [viewOrder, setViewOrder] = useState(null)
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setTimeout(() => {
-      const user = USERS.find(u => u.username === username && u.password === password)
-      if (user) { onLogin(user) }
-      else { setError('ຊື່ຜູ້ໃຊ້ ຫຼື ລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ'); setLoading(false) }
-    }, 600)
+  const pending = orders.filter(o => o.pack_status === 'pending')
+  const packed = orders.filter(o => o.pack_status === 'packed')
+  const shipped = orders.filter(o => o.pack_status === 'shipped')
+
+  const doPack = (order) => {
+    const prod = products.find(p => p.id === order.productId)
+    if (!prod || prod.stock < order.quantity) return notify('Stock ບໍ່ພຽງພໍ!', 'error')
+    dispatch({ type: 'PACK_ORDER', id: order.id, productId: order.productId, qty: order.quantity, user: user.name })
+    notify(`ແພັກ "${order.customerName}" ສຳເລັດ! Stock ຫັກ ${order.quantity} ຊອງ ✅`)
   }
 
-  const quickLogin = (user) => { setUsername(user.username); setPassword(user.password) }
+  const doShip = (order) => {
+    const t = tracking[order.id]?.trim()
+    if (!t) return notify('ກະລຸນາໃສ່ Tracking Number', 'error')
+    dispatch({ type: 'SHIP_ORDER', id: order.id, tracking: t, user: user.name })
+    setTracking(p => { const n = { ...p }; delete n[order.id]; return n })
+    notify(`ສົ່ງ "${order.customerName}" ສຳເລັດ! Tracking: ${t} 🚀`)
+  }
 
-  const roleColors = { admin: '#6366f1', packer: '#10b981', accountant: '#f59e0b', owner: '#ef4444' }
-  const roleIcons = { admin: '📋', packer: '📦', accountant: '💼', owner: '👑' }
+  const printLabel = (o) => {
+    const w = window.open('', '_blank', 'width=400,height=500')
+    w.document.write(`
+      <html><head><title>ໃບໜ້າຊອງ</title>
+      <style>body{font-family:sans-serif;padding:24px;max-width:320px;border:2px solid #000}
+      h2{margin:0 0 12px;font-size:18px}p{margin:6px 0;font-size:14px}
+      .big{font-size:20px;font-weight:bold;border:1px dashed #000;padding:8px;margin:10px 0}
+      .footer{margin-top:16px;font-size:11px;color:#666;border-top:1px solid #ccc;padding-top:8px}
+      </style></head><body>
+      <h2>🎗️ OuMi Band — ໃບໜ້າຊອງ</h2>
+      <p><b>ຊື່:</b> ${o.customerName}</p>
+      <div class="big">📍 ${o.address}</div>
+      <p><b>ເບີໂທ:</b> ${o.phone || '-'}</p>
+      <p><b>ສິນຄ້າ:</b> ${o.quantity} ຊອງ</p>
+      <p><b>ຍອດ:</b> ${fmtTHB(o.total)}</p>
+      ${o.tracking_number ? `<p><b>Tracking:</b> ${o.tracking_number}</p>` : ''}
+      <div class="footer">Order ID: ${o.id} | ${fmtDate(o.created_at)}</div>
+      </body></html>`)
+    w.document.close()
+    setTimeout(() => w.print(), 300)
+  }
 
-  return (
-    <div style={styles.wrap}>
-      <div style={styles.bg} />
-      <div style={styles.card}>
-        {/* Logo */}
-        <div style={styles.logoWrap}>
-          <div style={styles.logoIcon}>🎗️</div>
-          <div style={styles.logoText}>OuMi Band</div>
-          <div style={styles.logoSub}>ລະບົບຈັດການທຸລະກິດ</div>
+  const OrderCard = ({ o, action }) => (
+    <div style={{ background: '#0a0f1e', borderRadius: 12, padding: 14, marginBottom: 10, border: `1px solid ${C.border}` }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, color: C.text, fontSize: 15 }}>{o.customerName}</div>
+          <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>📍 {o.address}</div>
+          <div style={{ fontSize: 12, color: C.muted }}>📞 {o.phone || '-'} &nbsp;|&nbsp; 🛍 {o.quantity} ຊອງ &nbsp;|&nbsp; <span style={{ color: C.purple, fontWeight: 700 }}>{fmtTHB(o.total)}</span></div>
+          <div style={{ fontSize: 11, color: '#334155', marginTop: 3 }}>#{o.id.slice(-8)} · {fmtDate(o.created_at)}</div>
         </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={styles.form}>
-          <div style={styles.fieldWrap}>
-            <label style={styles.label}>ຊື່ຜູ້ໃຊ້</label>
-            <input value={username} onChange={e => { setUsername(e.target.value); setError('') }}
-              placeholder="username" style={styles.input} autoComplete="username" />
-          </div>
-          <div style={styles.fieldWrap}>
-            <label style={styles.label}>ລະຫັດຜ່ານ</label>
-            <input type="password" value={password} onChange={e => { setPassword(e.target.value); setError('') }}
-              placeholder="••••••" style={styles.input} autoComplete="current-password" />
-          </div>
-          {error && <div style={styles.error}>⚠ {error}</div>}
-          <button type="submit" disabled={loading} style={{ ...styles.btn, opacity: loading ? 0.7 : 1 }}>
-            {loading ? 'ກຳລັງເຂົ້າສູ່ລະບົບ...' : 'ເຂົ້າສູ່ລະບົບ'}
-          </button>
-        </form>
-
-        {/* Quick login */}
-        <div style={styles.quickWrap}>
-          <div style={styles.quickLabel}>ທົດສອບດ່ວນ:</div>
-          <div style={styles.quickGrid}>
-            {USERS.map(u => (
-              <button key={u.id} onClick={() => quickLogin(u)}
-                style={{ ...styles.quickBtn, borderColor: roleColors[u.role], color: roleColors[u.role] }}>
-                {roleIcons[u.role]} {u.role}
-              </button>
-            ))}
-          </div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <Btn small onClick={() => setViewOrder(o)} color={C.card2} style={{ border: `1px solid ${C.border}`, color: C.sub }}>👁</Btn>
+          <Btn small onClick={() => printLabel(o)} color={C.card2} style={{ border: `1px solid ${C.border}`, color: C.sub }}>🖨</Btn>
+          {action}
         </div>
       </div>
     </div>
   )
-}
 
-const styles = {
-  wrap: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, position: 'relative', overflow: 'hidden', background: '#0a0f1e' },
-  bg: { position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 30% 20%, #1e1b4b 0%, transparent 60%), radial-gradient(ellipse at 70% 80%, #0c2340 0%, transparent 60%)', pointerEvents: 'none' },
-  card: { background: 'rgba(30,41,59,0.95)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 20, padding: '40px 32px', width: '100%', maxWidth: 400, position: 'relative', boxShadow: '0 25px 60px rgba(0,0,0,0.5)' },
-  logoWrap: { textAlign: 'center', marginBottom: 32 },
-  logoIcon: { fontSize: 48, marginBottom: 8 },
-  logoText: { fontSize: 28, fontWeight: 700, color: '#f1f5f9', letterSpacing: 1 },
-  logoSub: { fontSize: 13, color: '#64748b', marginTop: 4 },
-  form: { display: 'flex', flexDirection: 'column', gap: 16 },
-  fieldWrap: { display: 'flex', flexDirection: 'column', gap: 6 },
-  label: { fontSize: 13, color: '#94a3b8', fontWeight: 600 },
-  input: { background: '#0f172a', border: '1px solid #334155', borderRadius: 10, color: '#f1f5f9', padding: '12px 16px', fontSize: 14, outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.2s' },
-  error: { background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, color: '#f87171', padding: '10px 14px', fontSize: 13 },
-  btn: { background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 10, color: '#fff', padding: '14px', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', marginTop: 4, transition: 'transform 0.1s' },
-  quickWrap: { marginTop: 28, borderTop: '1px solid #1e293b', paddingTop: 20 },
-  quickLabel: { fontSize: 11, color: '#475569', marginBottom: 10, textAlign: 'center' },
-  quickGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 },
-  quickBtn: { background: 'transparent', border: '1px solid', borderRadius: 8, padding: '8px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, transition: 'all 0.2s' },
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <h2 style={{ color: C.green, fontSize: 18, fontWeight: 800 }}>🏭 ສ່ວນຂອງພະນັກງານແພັກ</h2>
+
+      {/* Stock Overview */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
+        {products.map(p => (
+          <Card key={p.id} style={{ padding: 14, borderLeft: `3px solid ${p.stock <= p.alert_threshold ? C.red : C.green}` }}>
+            <div style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>📦 {p.name}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: p.stock <= p.alert_threshold ? C.red : C.green }}>{p.stock.toLocaleString()}</div>
+            <div style={{ fontSize: 11, color: C.muted }}>{p.unit}</div>
+            {p.stock <= p.alert_threshold && <div style={{ fontSize: 10, color: C.red, marginTop: 4, fontWeight: 700 }}>⚠ ໃກ້ໝົດ!</div>}
+          </Card>
+        ))}
+      </div>
+
+      {/* Pending Queue */}
+      <Card>
+        <CardTitle color={C.amber}>⏳ ຕ້ອງແພັກ ({pending.length})</CardTitle>
+        {pending.length === 0 && <div style={{ textAlign: 'center', color: '#334155', padding: 24 }}>ບໍ່ມີ Order ຄ້າງ ✅</div>}
+        {pending.map(o => (
+          <OrderCard key={o.id} o={o} action={
+            <Btn small onClick={() => doPack(o)} color={C.green}>✓ ແພັກສຳເລັດ</Btn>
+          } />
+        ))}
+      </Card>
+
+      {/* Packed - ready to ship */}
+      <Card>
+        <CardTitle color={C.blue}>📦 ພ້ອມສົ່ງ ({packed.length})</CardTitle>
+        {packed.length === 0 && <div style={{ textAlign: 'center', color: '#334155', padding: 24 }}>ບໍ່ມີລາຍການ</div>}
+        {packed.map(o => (
+          <div key={o.id} style={{ background: '#0a0f1e', borderRadius: 12, padding: 14, marginBottom: 10, border: `1px solid ${C.blue}33` }}>
+            <div style={{ fontWeight: 700, color: C.text, marginBottom: 10 }}>{o.customerName} — {fmtTHB(o.total)}</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input value={tracking[o.id] || ''} onChange={e => setTracking(p => ({ ...p, [o.id]: e.target.value }))}
+                placeholder="ປ້ອນ Tracking Number..."
+                style={{ flex: 1, minWidth: 160, background: '#111827', border: `1px solid ${C.border}`, borderRadius: 9, color: C.text, padding: '10px 12px', fontSize: 13, outline: 'none', fontFamily: 'inherit' }} />
+              <Btn small onClick={() => printLabel(o)} color={C.card2} style={{ border: `1px solid ${C.border}`, color: C.sub }}>🖨</Btn>
+              <Btn small onClick={() => doShip(o)} color={C.amber}>🚀 ສົ່ງອອກ</Btn>
+            </div>
+          </div>
+        ))}
+      </Card>
+
+      {/* Shipped history */}
+      <Card>
+        <CardTitle>✅ ສົ່ງສຳເລັດ ({shipped.length})</CardTitle>
+        {shipped.slice(0, 10).map(o => (
+          <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: `1px solid ${C.border}`, fontSize: 12 }}>
+            <span style={{ color: C.text }}>{o.customerName}</span>
+            <span style={{ color: C.muted }}>Tracking: {o.tracking_number}</span>
+            <span style={{ color: C.green, fontWeight: 700 }}>{fmtTHB(o.total)}</span>
+          </div>
+        ))}
+        {shipped.length === 0 && <div style={{ textAlign: 'center', color: '#334155', padding: 16 }}>ຍັງບໍ່ມີ</div>}
+      </Card>
+
+      {/* View Modal */}
+      {viewOrder && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+          <div style={{ background: '#1e293b', border: `1px solid ${C.border}`, borderRadius: 16, padding: 24, width: '100%', maxWidth: 400 }}>
+            <h3 style={{ color: C.text, marginBottom: 16 }}>📋 ຂໍ້ມູນ Order</h3>
+            {[['ຊື່', viewOrder.customerName], ['ທີ່ຢູ່', viewOrder.address], ['ເບີໂທ', viewOrder.phone || '-'],
+              ['ຈຳນວນ', `${viewOrder.quantity} ຊອງ`], ['ຍອດລວມ', fmtTHB(viewOrder.total)],
+              ['ໝາຍເຫດ', viewOrder.notes || '-']].map(([k, v]) => (
+              <div key={k} style={{ display: 'flex', padding: '8px 0', borderBottom: `1px solid ${C.border}`, fontSize: 13 }}>
+                <span style={{ color: C.muted, width: 90, flexShrink: 0 }}>{k}</span>
+                <span style={{ color: C.text }}>{v}</span>
+              </div>
+            ))}
+            <Btn onClick={() => setViewOrder(null)} color={C.card2} style={{ border: `1px solid ${C.border}`, color: C.sub, width: '100%', justifyContent: 'center', marginTop: 16 }}>ປິດ</Btn>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
