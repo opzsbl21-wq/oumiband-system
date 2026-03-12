@@ -108,7 +108,7 @@ export default function AdminModule({ state, dispatch, user, notify }) {
             <Input label="ເບີໂທ" value={form.phone} onChange={e => f({ phone: e.target.value })} placeholder="020..." />
             <div style={{ gridColumn: 'span 2' }}><Input label="ທີ່ຢູ່ *" value={form.address} onChange={e => f({ address: e.target.value })} placeholder="ທີ່ຢູ່ລະອຽດ..." /></div>
             <Select label="ສິນຄ້າ" value={form.productId} onChange={e => f({ productId: e.target.value })} options={products.map(p => ({ value: p.id, label: `${p.name} (${p.stock})` }))} />
-            <Input label="ຈຳນວນ" type="number" value={form.quantity} onChange={e => f({ quantity: Math.max(1, +e.target.value) })} />
+            <Input label="ຈຳນວນ" type="number" value={form.quantity} onChange={e => f({ quantity: e.target.value })} />
             <Select label="ສະກຸນ" value={form.currency} onChange={e => f({ currency: e.target.value })} options={countryRates.map(r => ({ value: r.currency, label: `${r.flag} ${r.currency}` }))} />
             <Input label="ໝາຍເຫດ" value={form.notes} onChange={e => f({ notes: e.target.value })} placeholder="ໝາຍເຫດ..." />
           </div>
@@ -153,10 +153,10 @@ export default function AdminModule({ state, dispatch, user, notify }) {
               ))}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Input label="ລາຄາ THB (฿)" type="number" value={editRate.price_thb} onChange={e => setEditRate(p => ({ ...p, price_thb: +e.target.value }))} />
-              <Input label="ລາຄາ KIP (ກີບ)" type="number" value={editRate.price_kip} onChange={e => setEditRate(p => ({ ...p, price_kip: +e.target.value }))} />
-              <Input label="ຈຳນວນຕ່ຳສຸດ" type="number" value={editRate.min_qty} onChange={e => setEditRate(p => ({ ...p, min_qty: +e.target.value }))} />
-              <Input label="ຈຳນວນສູງສຸດ" type="number" value={editRate.max_qty} onChange={e => setEditRate(p => ({ ...p, max_qty: +e.target.value }))} />
+              <Input label="ລາຄາ THB (฿)" type="number" value={editRate.price_thb} onChange={e => setEditRate(p => ({ ...p, price_thb: e.target.value }))} />
+              <Input label="ລາຄາ KIP (ກີບ)" type="number" value={editRate.price_kip} onChange={e => setEditRate(p => ({ ...p, price_kip: e.target.value }))} />
+              <Input label="ຈຳນວນຕ່ຳສຸດ" type="number" value={editRate.min_qty} onChange={e => setEditRate(p => ({ ...p, min_qty: e.target.value }))} />
+              <Input label="ຈຳນວນສູງສຸດ" type="number" value={editRate.max_qty} onChange={e => setEditRate(p => ({ ...p, max_qty: e.target.value }))} />
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
               <Btn onClick={() => setEditRate(null)} color={C.card2} style={{ border: `1px solid ${C.border}`, color: C.sub, flex: 1, justifyContent: 'center' }}>ຍົກເລີກ</Btn>

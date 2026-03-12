@@ -363,10 +363,10 @@ function StockModule({ state, dispatch, user, notify }) {
             <h3 style={{ color: C.text, marginBottom: 20 }}>✏ ແກ້ໄຂ: {editProduct.name}</h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <InputBox label="ຊື່ສິນຄ້າ" value={editProduct.name} onChange={e => setEditProduct(p => ({ ...p, name: e.target.value }))} />
-              <InputBox label="Stock ປັດຈຸບັນ" type="number" value={editProduct.stock} onChange={e => setEditProduct(p => ({ ...p, stock: +e.target.value }))} />
+              <InputBox label="Stock ປັດຈຸບັນ" type="number" value={editProduct.stock} onChange={e => setEditProduct(p => ({ ...p, stock: e.target.value }))} />
               <InputBox label="ໜ່ວຍ" value={editProduct.unit} onChange={e => setEditProduct(p => ({ ...p, unit: e.target.value }))} />
-              <InputBox label="ແຈ້ງເຕືອນ (ໜ່ວຍ)" type="number" value={editProduct.alert_threshold} onChange={e => setEditProduct(p => ({ ...p, alert_threshold: +e.target.value }))} />
-              <InputBox label="ຕົ້ນທຶນ/ຊິ້ນ (฿)" type="number" value={editProduct.cost_per_unit} onChange={e => setEditProduct(p => ({ ...p, cost_per_unit: +e.target.value }))} />
+              <InputBox label="ແຈ້ງເຕືອນ (ໜ່ວຍ)" type="number" value={editProduct.alert_threshold} onChange={e => setEditProduct(p => ({ ...p, alert_threshold: e.target.value }))} />
+              <InputBox label="ຕົ້ນທຶນ/ຊິ້ນ (฿)" type="number" value={editProduct.cost_per_unit} onChange={e => setEditProduct(p => ({ ...p, cost_per_unit: e.target.value }))} />
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
               <Btn onClick={() => setEditProduct(null)} color={C.card2} style={{ border: `1px solid ${C.border}`, color: C.sub, flex: 1, justifyContent: 'center' }}>ຍົກເລີກ</Btn>
@@ -391,11 +391,19 @@ function KPIBox({ icon, label, value, sub, color }) {
 }
 
 function InputBox({ label, value, onChange, type = 'text', placeholder = '' }) {
+  // Allow empty string so users can fully delete a number before typing new one
+  const displayVal = (value === null || value === undefined) ? '' : value
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
       {label && <label style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>{label}</label>}
-      <input type={type} value={value} onChange={onChange} placeholder={placeholder}
-        style={{ background: '#0a0f1e', border: `1px solid ${C.border}`, borderRadius: 9, color: C.text, padding: '10px 12px', fontSize: 13, outline: 'none', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' }} />
+      <input
+        type={type === 'number' ? 'text' : type}
+        inputMode={type === 'number' ? 'numeric' : undefined}
+        value={displayVal}
+        onChange={onChange}
+        placeholder={placeholder}
+        style={{ background: '#0a0f1e', border: `1px solid ${C.border}`, borderRadius: 9, color: C.text, padding: '10px 12px', fontSize: 13, outline: 'none', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' }}
+      />
     </div>
   )
 }
