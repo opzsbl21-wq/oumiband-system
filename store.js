@@ -1,10 +1,12 @@
 export const ROLES = { ADMIN: 'admin', PACKER: 'packer', ACCOUNTANT: 'accountant', OWNER: 'owner' }
-export const USERS = [
-  { id: 1, name: 'Admin ນ້ອຍ', username: 'admin', password: '1234', role: ROLES.ADMIN },
-  { id: 2, name: 'Packer ບຸນ', username: 'packer', password: '1234', role: ROLES.PACKER },
-  { id: 3, name: 'ບັນຊີ ມາລີ', username: 'accountant', password: '1234', role: ROLES.ACCOUNTANT },
-  { id: 4, name: 'ເຈົ້າຂອງ', username: 'owner', password: '1234', role: ROLES.OWNER },
+
+export const INITIAL_STAFF = [
+  { id: 1, name: 'Admin ນ້ອຍ', username: 'admin', password: '1234', role: ROLES.ADMIN, salary: 18000, currency: 'THB', active: true },
+  { id: 2, name: 'Packer ບຸນ', username: 'packer', password: '1234', role: ROLES.PACKER, salary: 15000, currency: 'THB', active: true },
+  { id: 3, name: 'ບັນຊີ ມາລີ', username: 'accountant', password: '1234', role: ROLES.ACCOUNTANT, salary: 20000, currency: 'THB', active: true },
+  { id: 4, name: 'ເຈົ້າຂອງ', username: 'owner', password: '1234', role: ROLES.OWNER, salary: 0, currency: 'THB', active: true },
 ]
+
 export const INITIAL_PRODUCTS = [
   { id: 1, name: 'OuMi Band Pro', stock: 850, unit: 'ຊອງ', alert_threshold: 500, cost_per_unit: 150 },
   { id: 2, name: 'OuMi Band Slim', stock: 420, unit: 'ຊອງ', alert_threshold: 500, cost_per_unit: 120 },
@@ -27,6 +29,9 @@ export const INITIAL_EXPENSES = [
   { id: 1, description: 'ຄ່າເຊົ່າສຳນັກງານ', amount: 15000, currency: 'THB', category: 'Fixed', expense_date: '2025-06-01', approved: true, attachment: null },
   { id: 2, description: 'ຄ່າໄຟຟ້າ', amount: 3200, currency: 'THB', category: 'Utility', expense_date: '2025-06-01', approved: true, attachment: null },
   { id: 3, description: 'ເງິນເດືອນພະນັກງານ', amount: 45000, currency: 'THB', category: 'Salary', expense_date: '2025-06-01', approved: false, attachment: null },
+]
+export const INITIAL_PROMOTIONS = [
+  { id: 1, title: 'ໂປຣໂມຊັ່ນ Welcome', body: 'ຊື້ 10 ຊອງ ລາຄາພິເສດ ฿300/ຊອງ!', active: true, created_at: '2025-06-01' },
 ]
 export const TAX_RATE = 0.07
 export const DEBT_RATE = 0.15

@@ -5,7 +5,7 @@ import PackerModule from './PackerModule.jsx'
 import FinanceModule from './FinanceModule.jsx'
 import OwnerModule from './OwnerModule.jsx'
 import { Notify, C } from './UI.jsx'
-import { INITIAL_PRODUCTS, INITIAL_PRICE_RATES, INITIAL_EXPENSES, INITIAL_COUNTRY_RATES, ROLES, genId } from './store.js'
+import { INITIAL_PRODUCTS, INITIAL_PRICE_RATES, INITIAL_EXPENSES, INITIAL_COUNTRY_RATES, INITIAL_STAFF, INITIAL_PROMOTIONS, ROLES, genId } from './store.js'
 
 // ===== REDUCER =====
 function reducer(state, action) {
@@ -81,6 +81,18 @@ function reducer(state, action) {
         auditLog: [log('ເພີ່ມສິນຄ້າ', action.user, action.product.name), ...state.auditLog].slice(0, 200)
       }
 
+    case 'ADD_STAFF':
+      return { ...state, staff: [...(state.staff||[]), action.staff], auditLog: [log('ເພີ່ມທີມ', action.user, action.staff.name), ...state.auditLog].slice(0,200) }
+    case 'UPDATE_STAFF':
+      return { ...state, staff: (state.staff||[]).map(s=>s.id===action.staff.id?action.staff:s), auditLog: [log('ແກ້ທີມ', action.user, action.staff.name), ...state.auditLog].slice(0,200) }
+    case 'ADD_PROMO':
+      return { ...state, promotions: [...(state.promotions||[]), action.promo], auditLog: [log('ໂປຣໃໝ່', action.user, action.promo.title), ...state.auditLog].slice(0,200) }
+    case 'UPDATE_PROMO':
+      return { ...state, promotions: (state.promotions||[]).map(p=>p.id===action.promo.id?action.promo:p), auditLog: [log('ແກ້ໂປຣ', action.user, action.promo.title), ...state.auditLog].slice(0,200) }
+    case 'TOGGLE_PROMO':
+      return { ...state, promotions: (state.promotions||[]).map(p=>p.id===action.id?{...p,active:!p.active}:p), auditLog: [log('ໂຕໂກ້ໂປຣ', action.user, action.id), ...state.auditLog].slice(0,200) }
+    case 'UPDATE_EXPENSE':
+      return { ...state, expenses: state.expenses.map(e=>e.id===action.expense.id?action.expense:e), auditLog: [log('ແກ້ລາຍຈ່າຍ', action.user||'Owner', action.expense.description), ...state.auditLog].slice(0,200) }
     case 'LOAD_STATE':
       return action.state
 
@@ -96,11 +108,13 @@ const INITIAL_STATE = {
   countryRates: INITIAL_COUNTRY_RATES,
   expenses: INITIAL_EXPENSES,
   incomes: [],
+  staff: INITIAL_STAFF,
+  promotions: INITIAL_PROMOTIONS,
   auditLog: [],
   rates: { thbToKip: 1320 },
 }
 
-const STORAGE_KEY = 'oumiband_v3'
+const STORAGE_KEY = 'oumiband_v4'
 
 function sanitizeRates(rates) {
   if (!rates) return INITIAL_PRICE_RATES
@@ -124,6 +138,8 @@ function loadState() {
         priceRates: sanitizeRates(parsed.priceRates),
         countryRates: parsed.countryRates || INITIAL_COUNTRY_RATES,
         incomes: parsed.incomes || [],
+        staff: parsed.staff || INITIAL_STAFF,
+        promotions: parsed.promotions || INITIAL_PROMOTIONS,
       }
     }
   } catch (e) {}
