@@ -50,7 +50,7 @@ function reducer(state, action) {
       return { ...state, rates: { ...state.rates, thbToKip: action.thbToKip } }
 
     case 'UPDATE_PRICE_RATE':
-      return { ...state, priceRates: state.priceRates.map(r => r.id === action.rate.id ? action.rate : r), auditLog: [log('ແກ້ລາຄາ', action.user || 'Owner', `${action.rate.customer_type}: ฿${action.rate.price_thb}`), ...state.auditLog].slice(0, 200) }
+      return { ...state, priceRates: state.priceRates.map(r => r.id === action.rate.id ? { ...action.rate, price_thb: parseFloat(action.rate.price_thb)||0, price_kip: parseFloat(action.rate.price_kip)||0, min_qty: parseInt(action.rate.min_qty)||0, max_qty: parseInt(action.rate.max_qty)||9999 } : r), auditLog: [log('ແກ້ລາຄາ', action.user || 'Owner', `${action.rate.customer_type}: ฿${action.rate.price_thb}`), ...state.auditLog].slice(0, 200) }
 
     // ===== STOCK ACTIONS =====
     case 'ADD_STOCK':
@@ -100,17 +100,28 @@ const INITIAL_STATE = {
   rates: { thbToKip: 1320 },
 }
 
-const STORAGE_KEY = 'oumiband_v2'
+const STORAGE_KEY = 'oumiband_v3'
+
+function sanitizeRates(rates) {
+  if (!rates) return INITIAL_PRICE_RATES
+  return rates.map(r => ({
+    ...r,
+    price_thb: parseFloat(r.price_thb) || 0,
+    price_kip: parseFloat(r.price_kip) || 0,
+    min_qty: parseInt(r.min_qty) || 0,
+    max_qty: parseInt(r.max_qty) || 9999,
+  }))
+}
 
 function loadState() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
       const parsed = JSON.parse(saved)
-      // Merge with initial to ensure new fields exist
       return {
         ...INITIAL_STATE,
         ...parsed,
+        priceRates: sanitizeRates(parsed.priceRates),
         countryRates: parsed.countryRates || INITIAL_COUNTRY_RATES,
         incomes: parsed.incomes || [],
       }
