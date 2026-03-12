@@ -42,11 +42,20 @@ export function StatusBadge({ status }) {
 }
 
 export function Input({ label, value, onChange, type = 'text', placeholder = '', style = {} }) {
+  const isNum = type === 'number'
+  const displayVal = (value === null || value === undefined) ? '' : value
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
       {label && <label style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>{label}</label>}
-      <input type={type} value={value} onChange={onChange} placeholder={placeholder}
-        style={{ background: '#0a0f1e', border: `1px solid ${C.border}`, borderRadius: 9, color: C.text, padding: '10px 12px', fontSize: 13, outline: 'none', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box', ...style }} />
+      <input
+        type={isNum ? 'text' : type}
+        inputMode={isNum ? 'numeric' : undefined}
+        value={displayVal}
+        onChange={onChange}
+        onFocus={isNum ? e => e.target.select() : undefined}
+        placeholder={placeholder}
+        style={{ background: '#0a0f1e', border: `1px solid ${C.border}`, borderRadius: 9, color: C.text, padding: '10px 12px', fontSize: 13, outline: 'none', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box', ...style }}
+      />
     </div>
   )
 }

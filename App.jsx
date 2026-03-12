@@ -391,16 +391,17 @@ function KPIBox({ icon, label, value, sub, color }) {
 }
 
 function InputBox({ label, value, onChange, type = 'text', placeholder = '' }) {
-  // Allow empty string so users can fully delete a number before typing new one
+  const isNum = type === 'number'
   const displayVal = (value === null || value === undefined) ? '' : value
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
       {label && <label style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>{label}</label>}
       <input
-        type={type === 'number' ? 'text' : type}
-        inputMode={type === 'number' ? 'numeric' : undefined}
+        type={isNum ? 'text' : type}
+        inputMode={isNum ? 'numeric' : undefined}
         value={displayVal}
         onChange={onChange}
+        onFocus={isNum ? e => e.target.select() : undefined}
         placeholder={placeholder}
         style={{ background: '#0a0f1e', border: `1px solid ${C.border}`, borderRadius: 9, color: C.text, padding: '10px 12px', fontSize: 13, outline: 'none', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box' }}
       />
