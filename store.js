@@ -51,3 +51,5 @@ export function calcCommission(sales) {
   if (sales >= 50000) return +(sales * 0.08).toFixed(2)
   return +(sales * 0.05).toFixed(2)
 }
+
+export const USERS = INITIAL_STAFF
